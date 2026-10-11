@@ -7,7 +7,9 @@ and Linux (GNOME gsettings), as well as environment variable proxy exports.
 from __future__ import annotations
 
 import logging
+import os
 import re
+import shutil
 import subprocess
 import sys
 from typing import Any
@@ -197,7 +199,21 @@ class SystemProxyManager:
 
     # --- Linux Implementation ---
 
+    @staticmethod
+    def _has_gnome_desktop() -> bool:
+        """Check if Linux system has an active GNOME / graphical session for gsettings."""
+        if sys.platform == "linux":
+            if not shutil.which("gsettings"):
+                return False
+            # If running headless without display or dbus session, gsettings cannot configure system proxy
+            if not (os.environ.get("DBUS_SESSION_BUS_ADDRESS") or os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+                return False
+        return True
+
     def _enable_linux(self, host: str, port: int) -> bool:
+        if not self._has_gnome_desktop():
+            logger.debug("Headless Linux detected (no graphical session). Skipping GNOME system proxy.")
+            return False
         try:
             r1 = subprocess.run(
                 ["gsettings", "set", "org.gnome.system.proxy.socks", "host", host],
@@ -217,13 +233,15 @@ class SystemProxyManager:
             if r1.returncode == 0 and r2.returncode == 0 and r3.returncode == 0:
                 logger.info("Enabled Linux GNOME system proxy: %s:%s", host, port)
                 return True
-            logger.warning("gsettings returned non-zero when enabling Linux proxy")
+            logger.debug("gsettings returned non-zero when enabling Linux proxy")
             return False
         except Exception as exc:
             logger.error("Failed to enable Linux system proxy: %s", exc)
             return False
 
     def _disable_linux(self) -> bool:
+        if not self._has_gnome_desktop():
+            return True
         try:
             res = subprocess.run(
                 ["gsettings", "set", "org.gnome.system.proxy", "mode", "none"],
@@ -233,7 +251,7 @@ class SystemProxyManager:
             if res.returncode == 0:
                 logger.info("Disabled Linux GNOME system proxy")
                 return True
-            logger.warning("gsettings returned non-zero when disabling Linux proxy")
+            logger.debug("gsettings returned non-zero when disabling Linux proxy")
             return False
         except Exception as exc:
             logger.error("Failed to disable Linux system proxy: %s", exc)

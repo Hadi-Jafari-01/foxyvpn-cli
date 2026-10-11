@@ -297,6 +297,12 @@ def handle_login() -> None:
         try:
             auth = asyncio.run(_do_login())
             console.print(f"[bold green]✔ Successfully logged in as {auth.email or email}![/bold green]")
+            # Ensure Guardian free entitlement is activated immediately
+            try:
+                guardian = GuardianClient()
+                asyncio.run(guardian.activate_guardian(auth.access_token))
+            except Exception:
+                pass
         except FxaApiError as err:
             console.print(f"[bold red]✘ Login failed:[/bold red] {err.message} (errno={err.errno})")
         except Exception as err:
@@ -497,6 +503,18 @@ def handle_connect(country_code: str | None = None) -> None:
                 return
         else:
             return
+
+    if auth.is_expired() and auth.refresh_token:
+        with console.status("[cyan]Access token expired. Renewing with refresh token...[/cyan]"):
+            try:
+                fxa_repo = FxaAuthRepository(token_store=token_store)
+                async def _refresh():
+                    async with fxa_repo:
+                        return await fxa_repo.refresh_access_token(auth.refresh_token)
+                auth = asyncio.run(_refresh())
+                console.print("[green]✔ Authentication token refreshed successfully.[/green]")
+            except Exception as exc:
+                console.print(f"[yellow]⚠ Token renewal failed: {exc}. Attempting connection with current token...[/yellow]")
 
     # 2. Check if already running
     if daemon_mgr.is_daemon_running():

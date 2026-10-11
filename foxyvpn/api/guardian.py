@@ -5,12 +5,15 @@ from __future__ import annotations
 import base64
 import inspect
 import json
+import logging
 from typing import Any
 
 import httpx
 
 from foxyvpn.api.fastly import FastlyChallengeError, FastlyChallengeSolver
 from foxyvpn.api.models import Entitlement, ProxyPass
+
+logger = logging.getLogger(__name__)
 
 GUARDIAN_ENDPOINT_DEFAULT = "https://vpn.mozilla.org"
 MOZILLA_VPN_USER_AGENT = "MozillaVPN/2.35.0 (sys:linux; iap:true)"
@@ -177,8 +180,19 @@ class GuardianClient:
         url = f"{endpoint.rstrip('/')}/api/v1/fpn/token"
         resp = await self._authorized_request("GET", url, access_token)
 
+        # Handle unactivated accounts: Guardian returns 401/403 until /activate is called
         if resp.status_code in (401, 403):
-            raise TokenInvalidError("access token was rejected by Guardian", resp.status_code)
+            logger.info("Proxy pass returned HTTP %d. Attempting Guardian entitlement activation...", resp.status_code)
+            try:
+                await self.activate_guardian(access_token, endpoint)
+                resp = await self._authorized_request("GET", url, access_token)
+            except Exception as act_err:
+                logger.debug("Guardian auto-activation attempt failed: %s", act_err)
+
+        if resp.status_code in (401, 403):
+            detail = resp.text.strip()[:300] if resp.text else ""
+            msg = f"access token was rejected by Guardian (HTTP {resp.status_code}: {detail})" if detail else "access token was rejected by Guardian"
+            raise TokenInvalidError(msg, resp.status_code)
         if resp.status_code == 429:
             raise QuotaExceededError("account proxy quota exceeded", resp.status_code)
         if resp.status_code != 200:
@@ -247,8 +261,18 @@ class GuardianClient:
         url = f"{endpoint.rstrip('/')}/api/v1/fpn/status"
         resp = await self._authorized_request("GET", url, access_token)
 
+        # Handle unactivated accounts on status endpoint
         if resp.status_code in (401, 403):
-            raise TokenInvalidError("access token was rejected by Guardian", resp.status_code)
+            try:
+                await self.activate_guardian(access_token, endpoint)
+                resp = await self._authorized_request("GET", url, access_token)
+            except Exception:
+                pass
+
+        if resp.status_code in (401, 403):
+            detail = resp.text.strip()[:300] if resp.text else ""
+            msg = f"access token was rejected by Guardian (HTTP {resp.status_code}: {detail})" if detail else "access token was rejected by Guardian"
+            raise TokenInvalidError(msg, resp.status_code)
         if resp.status_code == 429:
             raise QuotaExceededError("account proxy quota exceeded", resp.status_code)
         if resp.status_code != 200:

@@ -198,6 +198,11 @@ def login(
         try:
             auth = asyncio.run(_do_login())
             console.print(f"[bold green]✔ Successfully logged in as {auth.email or user_email}![/bold green]")
+            try:
+                guardian = GuardianClient()
+                asyncio.run(guardian.activate_guardian(auth.access_token))
+            except Exception:
+                pass
         except Exception as exc:
             console.print(f"[bold red]✘ Login failed:[/bold red] {exc}")
             sys.exit(1)
