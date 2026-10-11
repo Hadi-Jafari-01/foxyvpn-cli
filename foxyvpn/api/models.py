@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -233,3 +234,9 @@ class RuntimeAuth:
     @property
     def expiresAtEpochSeconds(self) -> int:
         return self.expires_at_epoch_seconds
+
+    def is_expired(self, skew_seconds: int = 60) -> bool:
+        """Check if access token is expired or within skew seconds window."""
+        if not self.expires_at_epoch_seconds:
+            return False
+        return time.time() >= (self.expires_at_epoch_seconds - skew_seconds)

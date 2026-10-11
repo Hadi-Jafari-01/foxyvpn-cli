@@ -504,7 +504,14 @@ def handle_connect(country_code: str | None = None) -> None:
         else:
             return
 
-    if auth.is_expired() and auth.refresh_token:
+    is_token_expired = False
+    if hasattr(auth, "is_expired") and callable(auth.is_expired):
+        try:
+            is_token_expired = auth.is_expired()
+        except Exception:
+            is_token_expired = False
+
+    if is_token_expired and auth.refresh_token:
         with console.status("[cyan]Access token expired. Renewing with refresh token...[/cyan]"):
             try:
                 fxa_repo = FxaAuthRepository(token_store=token_store)

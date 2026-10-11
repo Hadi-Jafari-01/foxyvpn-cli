@@ -6,6 +6,7 @@ server hierarchies, candidates, and connection state.
 
 from __future__ import annotations
 
+import time
 from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, TypeVar
 
@@ -20,6 +21,12 @@ class RuntimeAuth:
     refresh_token: str | None = None
     expires_at_epoch_seconds: int = 0
     email: str | None = None
+
+    def is_expired(self, skew_seconds: int = 60) -> bool:
+        """Check if access token is expired or within skew seconds window."""
+        if not self.expires_at_epoch_seconds:
+            return False
+        return time.time() >= (self.expires_at_epoch_seconds - skew_seconds)
 
     @property
     def accessToken(self) -> str:
