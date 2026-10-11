@@ -1,0 +1,47 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local binaries and drivers (auto-downloaded on demand)
+foxyvpn/bin/*.exe
+foxyvpn/bin/*.dll
+foxyvpn/bin/tun2socks
+bin/
+
+# User data and secrets
+*.log
+daemon.log
+*.pid
+.env
+.env.*
+tokens.json
+credentials.json
+settings.json
+state.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

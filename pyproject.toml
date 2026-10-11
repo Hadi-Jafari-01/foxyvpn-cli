@@ -1,0 +1,29 @@
+[project]
+name = "foxyvpn"
+version = "1.0.0"
+description = "High-performance cross-platform CLI client for Firefox VPN (Linux, Windows, macOS)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "FoxyVPN Team" }
+]
+dependencies = [
+    "click>=8.5.0",
+    "cryptography>=50.0.2",
+    "h2>=4.4.1",
+    "httpx[socks]>=0.28.1",
+    "rich>=15.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[project.scripts]
+foxyvpn = "foxyvpn.cli:cli"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
